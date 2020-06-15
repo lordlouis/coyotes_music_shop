@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * API para generar archivo de carga masiva para una tienda OpenCart
+ * En este caso se probó con el proveedor de servicios Fesh
+ */
+
 require 'vendor/autoload.php';
 require 'class.ws_dispath.php';
 require 'classes/class.ws_products.php';
