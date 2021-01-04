@@ -12,6 +12,7 @@
 
 #directorio de imagenes
 IMAGE_DIR="downloaded_images/"
+WATERMARK_IMG="logo-horizontal-watermark.png"
 cd $IMAGE_DIR
 echo "renombrar imagenes que tengan extension .jpg pero que realmente son PNG, a que tengan la extension png"
 
@@ -27,8 +28,15 @@ find -name '*.png' -type f | xargs -I {} -n 1 -P 4 mogrify -format jpg -backgrou
 echo "eliminar archivos convertidos a png( ya no se necesitan)"
 rm *.png
 
-echo "reducir las imagenes de manera proporcional a 900x900 pixeles"
-find -name '*.jpg' -type f -print0 | xargs -0 identify -format '%h %i\n'| awk '$1>900' | cut -d' ' -f2- | xargs -I {} -n 1 -P 4 mogrify -resize 900x900\> {}
+#echo "reducir las imagenes de manera proporcional a 900x900 pixeles que midan más de 900 pixeles"
+#find -name '*.jpg' -type f -print0 | xargs -0 identify -format '%h %i\n'| awk '$1>900' | cut -d' ' -f2- | xargs -I {} -n 1 -P 4 mogrify -resize 900x900\> {}
+
+echo "reducir las imagenes a 900x900 pixeles y rellenar espacios con fondo blanco a 900x900 pixeles"
+# esta configuración de medidas es especial para la plataforma fesh
+find -name '*.jpg' -type f | xargs -I {} -n 1 -P 4 mogrify -resize 900x900 -extent 900x900 -gravity Center -fill white {}
+
+echo "agregar marca de agua"
+find -name '*.jpg' -type f | xargs -I {} -n 1 -P 4 composite -dissolve 7 -tile ../$WATERMARK_IMG {} {}
 
 echo "comprimir todas las imagenes jpg a 75 porciento"
 find -name '*.jpg' -type f | xargs -I {} -n 1 -P 4 mogrify -quality 75% {}

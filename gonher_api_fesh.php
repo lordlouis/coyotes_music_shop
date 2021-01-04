@@ -129,10 +129,19 @@ $download_images = array();
 
 // leemos el listado de productos del catalogo en excel de Gonher
 // en el se debe agregar los productos de otras lisas de precios, como la de Inovaudio
+// descargar el archivo desde https://www.grupogonher.mx/Distribuidores/Existencias
 $reader = new Xls();
-$spreadsheet = $reader->load("./Lista de precios Gonher.xls");
+$spreadsheet = $reader->load("./ListaDePrecios.xls");
 $worksheet = $spreadsheet->getActiveSheet();
 
+// obtenemos listado de modelos de productos de la tienda fesh
+$csv_file = file_get_contents('https://coyotesmusicshop.com.mx/force404?get_products_model=1');
+// test:
+// $csv_file = file_get_contents('get_products_model.txt');
+$csv_array = str_getcsv($csv_file, PHP_EOL);
+foreach ($csv_array as $key => &$_model){
+    $_model = rtrim($_model);
+}
 
 // Get the highest row and column numbers referenced in the worksheet
 
@@ -141,6 +150,9 @@ $highestRow = $worksheet->getHighestRow(); // e.g. 10
 
 // contadores para iterar valores
 $pl_coun = 2;
+
+// para agregar nuevos productos, se aumenta el identificador
+$pl_coun = 2 + 4995;
 $cl_coun = 2;
 $pil_coun = 2;
 $agl_coun = 2;
@@ -150,6 +162,12 @@ $pal_coun = 2;
 for ($row = 2; $row <= $highestRow; ++$row) {
     $col = 1;
     $ws_products_code = $worksheet->getCellByColumnAndRow($col, $row)->getValue();
+
+    // si el modelo ya existe en la tienda fesh_lo ignoramos
+    if (in_array($ws_products_code, $csv_array)) {
+        echo 'ya existe el codigo en la tienda, no se agrega al archivo generado ' . $ws_products_code . PHP_EOL;
+        continue;
+    }
 
     $ws_request['Articulo'] = $ws_products_code;
 
@@ -186,12 +204,18 @@ for ($row = 2; $row <= $highestRow; ++$row) {
     }
 
     // limitar a que solo se generen productos con precio mayor o igual a $500
+    // if ($ws_products_price < 500) {
+    //     continue;
+    // }
+    // si lo asignamos al archivo de carga, pero con estatus desactivado
     if ($ws_products_price < 500) {
-        continue;
+        $ws_products_status = 'false';
     }
 
     // aumentar el precio de venta
     $ws_products_price = update_product_price($ws_products_price);
+    // quitar valor de IVA incluido en el precio
+    $ws_products_price = $ws_products_price / 1.16;
 
     $category_size = count($ws_products_response['Categorias']);
     // si no contiene categorias el producto, lo asignamos a una categoria generica
@@ -204,9 +228,10 @@ for ($row = 2; $row <= $highestRow; ++$row) {
         $category_size = 1;
     }
     $category_index = $category_size;
-    // limitar el arbol de categorias a 3
-    if ($category_index > 3) {
-        $category_index = 3;
+    $category_deep_limit = 2;
+    // limitar el arbol de categorias para que no descargue mas subcategorias
+    if ($category_index > $category_deep_limit) {
+        $category_index = $category_deep_limit;
     }
     $category_index = $category_index - 1;
     // poner el ultimo id categorias
@@ -225,7 +250,7 @@ for ($row = 2; $row <= $highestRow; ++$row) {
     $products_layout_fesh[$pl_coun]['isbn'] = '';
     $products_layout_fesh[$pl_coun]['mpn'] = '';
     $products_layout_fesh[$pl_coun]['location'] = '';
-    $products_layout_fesh[$pl_coun]['quantity'] = '1'; // para gonher se pone 1 existencia, ya que no nos regresan existencias
+    $products_layout_fesh[$pl_coun]['quantity'] = '10'; // para gonher se pone 10 existencias, ya que no nos regresan existencias
     $products_layout_fesh[$pl_coun]['model'] = $ws_products_response['Codigo'];
     $products_layout_fesh[$pl_coun]['manufacturer'] = $ws_products_response['Marca'];
     $products_layout_fesh[$pl_coun]['image_url'] = $products_image;
@@ -243,13 +268,13 @@ for ($row = 2; $row <= $highestRow; ++$row) {
     $products_layout_fesh[$pl_coun]['height'] = '0';
     $products_layout_fesh[$pl_coun]['length_unit'] = 'cm';
     $products_layout_fesh[$pl_coun]['status'] = $ws_products_status;
-    $products_layout_fesh[$pl_coun]['tax_class_id'] = '0';  // - los precios que regresa gonher ya traen iva en el precio, no se debe de agregar valor de IVA
+    $products_layout_fesh[$pl_coun]['tax_class_id'] = '1';  // - los precios que regresa gonher ya traen iva en el precio (previamente se le quita),se agrega bandera de IVA
     $products_layout_fesh[$pl_coun]['seo_keyword'] = sanitize_name($ws_products_response['Nombre']);
     $products_layout_fesh[$pl_coun]['description(es-es)'] = $ws_products_response['Descripcion'];
     $products_layout_fesh[$pl_coun]['meta_title(es-es)'] = sanitize_name($ws_products_response['Nombre']);
     $products_layout_fesh[$pl_coun]['meta_description(es-es)'] = '';
     $products_layout_fesh[$pl_coun]['meta_keywords(es-es)'] = '';
-    $products_layout_fesh[$pl_coun]['stock_status_id'] = ($ws_products_status == 'true' ? '7' : '5'); // 7= in stock 8 = out of stock
+    $products_layout_fesh[$pl_coun]['stock_status_id'] = ($ws_products_status == 'true' ? '7' : '5'); // 7= in stock 5 = out of stock
     $products_layout_fesh[$pl_coun]['store_ids'] = '0';
     $products_layout_fesh[$pl_coun]['layout'] = '';
     $products_layout_fesh[$pl_coun]['related_ids'] = '';
@@ -325,8 +350,8 @@ for ($row = 2; $row <= $highestRow; ++$row) {
             if ($key == 0 && $categoria['Categoria'] == 'Exhibidores') {
                 continue;
             }
-            // limitar el arbol de categorias a 3
-            if ($key == 3) {
+            // limitar el arbol de categorias
+            if ($key == $category_deep_limit) {
                 continue;
             }
             $categories_layout_fesh[$cl_coun]['category_id'] = $categoria['Id'];

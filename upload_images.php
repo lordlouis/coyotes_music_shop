@@ -15,9 +15,11 @@
  */
 function curl_sender($url, $get_params, $post_params, $headers)
 {
-    $query = http_build_query($get_params);
-    $query = preg_replace('/%5B[0-9]+%5D/simU', '', $query);
-    $url .= '?' . $query;
+    if (!empty($get_params)) {
+        $query = http_build_query($get_params);
+        $query = preg_replace('/%5B[0-9]+%5D/simU', '', $query);
+        $url .= '?' . $query;
+    }
 
     $curl = curl_init();
 
@@ -52,14 +54,15 @@ function send_images($images)
         $post_params['file[' . $key . ']'] =  new CURLFILE($image['filename'], $image['mime']);
     }
 
-    $url = 'https://coyotesmusicshop.fesh.store/admin/index.php';
+    $url = 'https://coyotesmusicshop.com.mx/admin/index.php';
 
     // TODO: poner cookies y token como constantes o como parametros
+    // NOTA: tomar las cookies de la cabecera ajax del formulario de subir imagenes de fesh
     $cookies = array(
-        "PHPSESSID" => "ooe1qq64umr5t6g6tfpjip73e3",
-        "default" => "583688a2b1d020f3b3795bbc4a",
+        "PHPSESSID" => "5vv0o3fql7us081lkteha3fp83",
+        "default" => "5f326e301506b4d99ec6a690a4",
     );
-    $token = "mfj61cTCdxuPnwHkUZLOHonjNpMmsiG6";
+    $token = "oOXHgf7reBFXnjNzF2DjxA8dJy3jMKIF";
 
     $get_params = array(
         "route" => "common/filemanager/upload",
@@ -86,13 +89,14 @@ function send_images($images)
  */
 function read_images($dir)
 {
+    $files = array();
     if (is_dir($dir)) {
         if ($dh = opendir($dir)) {
             $i = 0;
             $j = 0;
             while (($file = readdir($dh)) !== false) {
                 // $j++;
-                // if($j < 11440){
+                // if($j < 3180){
                 //     continue;
                 // }
                 $filename = $dir . '/' . $file;
@@ -102,22 +106,38 @@ function read_images($dir)
                         "filename" => $filename,
                         "mime" => $image['mime']
                     );
-                    // TODO: hace falta validar si el listado restante de imagenes es menor a 10.
-                    // si es menor a 10 ya no va a intentar subir las imagenes
-                    if (count($files) == 10) {
+                    if (count($files) == 20) {
                         $response = json_decode(send_images($files), true);
                         if (isset($response['success'])) {
                             $i += count($files);
                             echo 'imagenes subidas: ' . $i . PHP_EOL;
-                            $files = array();
                         } else if (isset($response['error'])) {
                             echo print_r($files);
                             break;
+                        } else {
+                            echo 'Se obtuvo una respuesta inesperada: ';
+                            echo print_r($files);
+                            break;
                         }
+                        // Independientemente del resultado, se reinicia array
+                        $files = array();
                     }
                 }
             }
             closedir($dh);
+            // mandar el resto de archivos
+            if (count($files) > 0) {
+                $response = json_decode(send_images($files), true);
+                if (isset($response['success'])) {
+                    $i += count($files);
+                    echo 'imagenes subidas: ' . $i . PHP_EOL;
+                } else if (isset($response['error'])) {
+                    echo print_r($files);
+                } else {
+                    echo 'Se obtuvo una respuesta inesperada: ';
+                    echo print_r($files);
+                }
+            }
         }
     }
 }
