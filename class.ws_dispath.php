@@ -177,8 +177,8 @@ class aasasoft_service_dispatch extends httWebModel
 				case 5:
 					$s = 'FATAL ERROR';
 			}
-			$arch = fopen(DIR_FS_CATALOG . "/logs/debug-".(empty($name_type) ? $s : $name_type).'_'.str_replace(' ','_',date('d-m-Y H:i')), "a+");
-			fwrite($arch, "[".date(self::$time_debugger_file)." "." - $s ] ".$string_log.' page:'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'] ."\n");
+			$arch = fopen("logs/debug-".(empty($name_type) ? $s : $name_type).'_'.str_replace(' ','_',date('d-m-Y H:i')), "a+");
+			fwrite($arch, "[".date(self::$time_debugger_file)." "." - $s ] ".$string_log . "\n");
 			fclose($arch);
 		}
 	}

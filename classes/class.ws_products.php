@@ -69,4 +69,54 @@ class aasasoft_products extends aasasoft_service_dispatch
 
 		return $response;
 	}
+
+	/**
+	 * Obtiene listado de existencias
+	 * 
+	 * @param  string uri endpont service
+	 * @return [array htt object]
+	 */
+	public function get_all_stock_service($params_request="", $uri = "ProdListadoArticuloExistencia.aspx")
+	{
+        $query = http_build_query($params_request);
+        $query = preg_replace('/%5B[0-9]+%5D/simU', '', $query);
+        $uri .= '?' . $query;
+		$request = new aasasoft_request_factory(true, true, "get");
+		$request->set_custom_uri($uri);
+
+		$this->debugPrintRequest($request->get_post_message(), __METHOD__);
+
+		$this->webModel()->{__FUNCTION__}($request->get_post_message())->prepareService()->callService();
+
+		$response = $this->getResponse()->toHttObject();
+
+		$this->debugPrintResponse($response, __METHOD__);
+
+		return $response;
+	}
+
+	/**
+	 * Obtiene listado de precios
+	 * 
+	 * @param  string uri endpont service
+	 * @return [array htt object]
+	 */
+	public function get_all_prices_service($params_request="", $uri = "ProdListadoArticuloPrecio.aspx")
+	{
+        $query = http_build_query($params_request);
+        $query = preg_replace('/%5B[0-9]+%5D/simU', '', $query);
+        $uri .= '?' . $query;
+		$request = new aasasoft_request_factory(true, true, "get");
+		$request->set_custom_uri($uri);
+
+		$this->debugPrintRequest($request->get_post_message(), __METHOD__);
+
+		$this->webModel()->{__FUNCTION__}($request->get_post_message())->prepareService()->callService();
+
+		$response = $this->getResponse()->toHttObject();
+
+		$this->debugPrintResponse($response, __METHOD__);
+
+		return $response;
+	}
 }

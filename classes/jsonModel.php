@@ -220,7 +220,11 @@ class jsonModel
 		
         $this->result = curl_exec($ch);
         // por alguna razon el json viene con salto de linea y causa error, se eliminan los saltos de linea
-        $this->result = str_replace(PHP_EOL, '', $this->result);
+		$this->result = str_replace(PHP_EOL, '', $this->result);
+		if($this->action == 'get_all_prices_service'){
+			// el campo precio no es json valido, por que no se le asigna ningun valor. Para resolverlo se elimina
+			$this->result = str_replace('"precio":,', '', $this->result);
+		}
 
 		$this->info = curl_getinfo($ch);
 		

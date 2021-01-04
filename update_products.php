@@ -4,7 +4,9 @@
  * API para actualizar productos para una tienda OpenCart
  * En este caso se probó con el proveedor de servicios Fesh
  */
+echo 'date start: '. date('Y-m-d H:i:s') . PHP_EOL;
 
+// define('AASASOFT_LOGS_WEBSERVICE_ENABLED', 'true');
 require 'class.ws_dispath.php';
 require 'classes/class.ws_products.php';
 require 'classes/class.aasasoft_request_factory.php';
@@ -18,6 +20,7 @@ $ws_request = array(
 // ruta en la cual se van a guardar las imagenes de productos
 $products_layout_fesh = array();
 
+/*
 // obtenemos listado de modelos de productos de la tienda fesh
 $csv_file = file_get_contents('https://coyotesmusicshop.com.mx/force404?get_products_model=1');
 // test:
@@ -57,7 +60,7 @@ foreach ($csv_array as $key => $_model){
     // }
     // si lo asignamos al archivo de carga, pero con estatus desactivado
     if ($ws_products_price < 500) {
-        $ws_products_status = 'false';
+        $ws_products_status = '0';
     }
 
     // aumentar el precio de venta
@@ -65,23 +68,69 @@ foreach ($csv_array as $key => $_model){
     // quitar valor de IVA incluido en el precio
     $ws_products_price = $ws_products_price / 1.16;
 
-    /*
-    // test
-    $ws_products_code = 'model ' . $key;
-    $ws_products_price = 'price ' . $key;
-    $ws_products_status = 'status ' . $key;
-    */
+    // // test
+    // $ws_products_code = 'model ' . $key;
+    // $ws_products_price = 'price ' . $key;
+    // $ws_products_status = 'status ' . $key;
+
     $products_layout_fesh[$key] = json_encode(array(
         'model' => $ws_products_code,
         'price' => $ws_products_price,
         'status' => $ws_products_status,
-        'stock_status_id' => ($ws_products_status == 'true' ? '7' : '5'), // 7= in stock 5 = out of stock
+        'stock_status_id' => ($ws_products_status == '1' ? '7' : '5'), // 7= in stock 5 = out of stock
         'tax_class_id' => '1',
     ));
 
 }
+*/
+echo 'get_all_stock_service...'. PHP_EOL;
+$ws_response = $aasasoft_products->get_all_stock_service($ws_request);
+if (isset($ws_response['Articulos'])) {
+    foreach($ws_response['Articulos'] as $articulos){
+        $ws_products_status = ($articulos['Disponible'] == 'Si' ? '1' : '0');
+        $ws_products_code = rtrim($articulos['Codigo']);
+        $products_layout_fesh[$ws_products_code] = array(
+            'model' => $ws_products_code,
+            'status' => $ws_products_status,
+            'stock_status_id' => ($ws_products_status == '1' ? '7' : '5'), // 7= in stock 5 = out of stock
+            'tax_class_id' => '1',
+        );
+    }
+}
+else{
+    echo 'get_all_stock_service: error al consultar.'. PHP_EOL;
+    exit();
+}
+echo 'get_all_prices_service...'. PHP_EOL;
+$ws_response = $aasasoft_products->get_all_prices_service($ws_request);
+if (isset($ws_response['Articulos'])) {
+    foreach($ws_response['Articulos'] as $articulos){
+        $ws_products_code = rtrim($articulos['Codigo']);
+            // obtener primero precio con descuento
+        $ws_products_price = (float) $articulos['PrecioDistribuidor'];
+
+        // si lo asignamos al archivo de carga, pero con estatus desactivado
+        if ($ws_products_price < 500) {
+            $ws_products_status = '0';
+            $products_layout_fesh[$ws_products_code]['status'] = $ws_products_status;
+            $products_layout_fesh[$ws_products_code]['stock_status_id'] = ($ws_products_status == '1' ? '7' : '5'); // 7= in stock 5 = out of stock
+        }
+
+        // aumentar el precio de venta
+        $ws_products_price = update_product_price($ws_products_price);
+        // quitar valor de IVA incluido en el precio
+        $ws_products_price = $ws_products_price / 1.16;
+        $products_layout_fesh[$ws_products_code]['price'] = $ws_products_price;
+    }
+}
+else{
+    echo 'get_all_prices_service: error al consultar.'. PHP_EOL;
+    exit();
+}
 
 if(!empty($products_layout_fesh)){
+    echo "listo para enviar. total: " . count($products_layout_fesh) . PHP_EOL;
+
     $url = 'https://coyotesmusicshop.com.mx/force404';
 
     $get_params = array(
@@ -95,19 +144,21 @@ if(!empty($products_layout_fesh)){
     $post_params = array();
     $step = 100;
     // enviar los datos recabados de 100 en 100
-    echo "total: " . count($products_layout_fesh) . PHP_EOL;
     foreach($products_layout_fesh as $key=> $product){
-        $post_params[] = $product;
+        $post_params[] = json_encode($product);
         if(count($post_params) % $step == 0){
             $response = curl_sender($url, $get_params, $post_params, $headers);
-            echo $response . PHP_EOL;
+            // echo $response . PHP_EOL;
             $post_params = array();
         }
     }
     if(count($post_params) > 0){
         $response = curl_sender($url, $get_params, $post_params, $headers);
-        echo $response . PHP_EOL;
+        // echo $response . PHP_EOL;
     }
+    echo $response . PHP_EOL;
+    echo 'date end: '. date('Y-m-d H:i:s') . PHP_EOL;
+
 }
 
 /**
