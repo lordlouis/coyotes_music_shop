@@ -1,0 +1,22 @@
+{
+    "name": "Coyote's Music Shop",
+    "short_name": "Coyote's Music Shop",
+    "description": "Venta de instrumentos musicales, audio, iluminación y soporte técnico. manejamos las mejores marcas para ofrecerte la calidad y servicio que te mereces.",
+    "icons": [
+        {
+            "src": "/image/catalog/favicons/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose":"any maskable"
+        },
+        {
+            "src": "/image/catalog/favicons/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "theme_color": "#1a1a1a",
+    "background_color": "#1a1a1a",
+    "start_url":"https://coyotesmusicshop.com.mx",
+    "display": "minimal-ui"
+}

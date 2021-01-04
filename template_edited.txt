@@ -1,0 +1,7 @@
+archivos editados de plantillas
+- common / header.tpl
+- checkout / cart.tpl
+- error / not_found.tpl
+- product / product.tpl
+
+se edito el archivo customcss.css
