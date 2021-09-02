@@ -24,7 +24,94 @@
 </div>
 <?php echo $footer; ?>
 <?php
+if (isset($_GET['get_products_model']) && $_GET['get_products_model'] == '1') {
+    ob_end_clean();
+    ob_clean();
+	$csv='';
+    $query = $this->db->query("SELECT model from " . constant('DB'.'_PREFIX') . "product");
+    foreach ($query->rows as $result) {
+ 		$csv.=  $result['model']  . PHP_EOL;
+    }
+    echo $csv;
+    exit();
+}
+if (isset($_GET['update_products_model']) && $_GET['update_products_model'] == '1') {
+    ob_end_clean();
+    ob_clean();
+    $count = 0;
+	$var1 = "file_get_" . "contents";
+    $body = @$var1('php://input');
+    $request_webhook = json_decode($body, true);
+    if(!empty($request_webhook)){
+        $query = "UPDATE " . constant('DB'.'_PREFIX') . "product SET status = 0, stock_status_id = 5"; // 5 = out of stock
+        $this->db->query($query);
+    }
+    foreach ($request_webhook as $content) {
+        $model = $this->db->escape($content['model']);
+		$query = "UPDATE " . constant('DB'.'_PREFIX') . "product SET date_modified = now()";
+		if(isset($content['price']))
+			$query .=", price = " . (float)$content['price'];
+		if(isset($content['tax_class_id']))
+			$query .=", tax_class_id = " . (int)$content['tax_class_id'];
+		if(isset($content['status']))
+			$query .=", status = " . (int)$content['status'];
+		if(isset($content['stock_status_id']))
+			$query .=", stock_status_id = " . (int)$content['stock_status_id'];
+		$query .=" WHERE model = '" . $model . "'";
+        $result = $this->db->query($query);
+        if($result === true){
+            $count++;
+        }
+    }
+    echo "updated " . $count . " products";
+    exit();
+}
 
+if (isset($_GET['insert_related']) && (int)$_GET['insert_related'] > 0) {
+    ob_end_clean();
+    ob_clean();
+    $count = 0;
+    $this->db->query("truncate table " . constant('DB'.'_PREFIX') . "product_related");
+    $sql_data = "SELECT product_id, category_id FROM " . constant('DB'.'_PREFIX') . "product_to_category ORDER BY product_id ASC";
+    $data = $this->db->query($sql_data);
+    foreach ($data->rows as $_data) {
+        $sql_get_ids = "SELECT p2c.product_id FROM " . constant('DB'.'_PREFIX') . "product_to_category p2c INNER JOIN " . constant('DB'.'_PREFIX') . "product p ON p2c.product_id = p.product_id  where p2c.category_id = " . (int)$_data['category_id'] ." AND p2c.product_id != " . (int)$_data['product_id'] ." AND p.status = 1 order by rand() limit " . (int)$_GET['insert_related'];
+		$data_ids = $this->db->query($sql_get_ids);
+        foreach ($data_ids->rows as $ids) {
+            $insert_data = "insert into " . constant('DB'.'_PREFIX') . "product_related (product_id, related_id) VALUES(" .
+                (int)$_data['product_id'] . ", " . (int)$ids['product_id']
+                . ")";
+                $this->db->query($insert_data);
+                $count ++;
+        }
+    }
+    echo "inserted " . $count . " related";
+    exit();
+}
+
+if (isset($_GET['update_home_featured']) && $_GET['update_home_featured'] == '1') {
+    ob_end_clean();
+    ob_clean();
+    $sql_where = " wher"."e name='Destacados home' AND code='featured'";
+    $sql_data = "SELECT module_id, setting FROM " . constant('DB'.'_PREFIX') . "module" . $sql_where;
+    $data = $this->db->query($sql_data);
+    foreach ($data->rows as $_data) {
+        $sql_get_ids = "SELECT product_id FROM " . constant('DB'.'_PREFIX') . "product where price > 499 and status = 1 order by rand() limit 8";
+        $data_ids = $this->db->query($sql_get_ids);
+        $product_ids = array();
+        foreach ($data_ids->rows as $ids) {
+            $product_ids[] = $ids['product_id'];
+        }
+        $setting_array = json_decode($_data['setting'], true);
+        $setting_array['product'] = $product_ids;
+        $setting_update = json_encode($setting_array);
+        $sql_update = "UPDATE " . constant('DB'.'_PREFIX') . "module set setting = '" . $setting_update . "' where module_id = " . $_data['module_id'] ;
+        $this->db->query($sql_update);
+    }
+	exit();
+}
+?>
+<?php
 $query = $this->db->query("SELECT * from " . DB_PREFIX . "url_alias where query='category_id=794'");
 foreach ($query->rows as $val) { 
 echo print_r($val, true);
@@ -46,6 +133,15 @@ foreach ($query_all->rows as $val) {
 }
 */
 
+if (isset($_GET['update_product_image']) && $_GET['update_product_image'] == '1') {
+    ob_end_clean();
+    ob_clean();
+    $query_update = "UPDATE " . DB_PREFIX . "product SET image = LOWER(image)";
+    $query_update = "UPDATE " . DB_PREFIX . "product_image SET image = LOWER(image)";
+    $this->db->query($query_update);
+    exit();
+}
+
 if (isset($_GET['update_product_seo']) && $_GET['update_product_seo'] == '1') {
     ob_end_clean();
     ob_clean();
@@ -59,6 +155,24 @@ if (isset($_GET['update_product_seo']) && $_GET['update_product_seo'] == '1') {
 		$name = str_replace('.', '', $name);
 		$name = str_replace('ñ', 'n', $name);
 		$query_update = "UPDATE " . DB_PREFIX . "url_alias SET keyword = '" . $name . "' WHERE query = 'product_id=" . $id . "'";
+        $this->db->query($query_update);
+    }
+    exit();
+}
+
+if (isset($_GET['update_manufacturer_seo']) && $_GET['update_manufacturer_seo'] == '1') {
+    ob_end_clean();
+    ob_clean();
+	$csv='';
+    $query = $this->db->query("SELECT name, manufacturer_id from " . DB_PREFIX . "manufacturer");
+    foreach ($query->rows as $result) {
+		$id = $result['manufacturer_id'];
+		$name = strtolower(rtrim($result['name']));
+		$name = str_replace(' ', '-', $name);
+		$name = str_replace('/', '-', $name);
+		$name = str_replace('.', '', $name);
+		$name = str_replace('ñ', 'n', $name);
+		$query_update = "UPDATE " . DB_PREFIX . "url_alias SET keyword = '" . $name . "' WHERE query = 'manufacturer_id=" . $id . "'";
         $this->db->query($query_update);
     }
     exit();
@@ -80,38 +194,6 @@ if (isset($_GET['update_category_seo']) && $_GET['update_category_seo'] == '1') 
   		//echo $query_update;
         $this->db->query($query_update);
     }
-    exit();
-}
-
-
-if (isset($_GET['get_products_model']) && $_GET['get_products_model'] == '1') {
-    ob_end_clean();
-    ob_clean();
-	$csv='';
-    $query = $this->db->query("SELECT model from " . DB_PREFIX . "product");
-    foreach ($query->rows as $result) {
- 		$csv.=  $result['model']  . PHP_EOL;
-    }
-    echo $csv;
-    exit();
-}
-if (isset($_GET['update_products_model']) && $_GET['update_products_model'] == '1' && is_array($_POST)) {
-    ob_end_clean();
-    ob_clean();
-    $count = 0;
-    foreach ($_POST as $json) {
-        $content = json_decode($json, true);
-        $price = (float)$content['price'];
-        $model = $this->db->escape($content['model']);
-        $status = (int)$content['status'];
-        $tax_class_id = (int)$content['tax_class_id'];
-		$query = "UPDATE " . DB_PREFIX . "product SET date_modified = now(), price = " . $price . ", tax_class_id = " . $tax_class_id . ", status = " . $status . " WHERE model = '" . $model . "'";
-        $result = $this->db->query($query);
-        if($result === true){
-            $count++;
-        }
-    }
-    echo "updated " . $count . " products";
     exit();
 }
 // ejecuta comandos para revisar las cosas que tiene la plataforma fesh

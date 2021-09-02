@@ -152,7 +152,7 @@ $highestRow = $worksheet->getHighestRow(); // e.g. 10
 $pl_coun = 2;
 
 // para agregar nuevos productos, se aumenta el identificador
-$pl_coun = 2 + 4995;
+// $pl_coun = 2 + 4995;
 $cl_coun = 2;
 $pil_coun = 2;
 $agl_coun = 2;
@@ -181,9 +181,17 @@ for ($row = 2; $row <= $highestRow; ++$row) {
         continue;
     }
     // imprimimos cada iteracion
-    echo $ws_products_response['Codigo'] . ' ';
+    // echo $ws_products_response['Codigo'] . ' ';
 
     $ws_products_stock_prices_response = $aasasoft_products->get_stock_prices_service($ws_request);
+
+    // llenar con datos dummy si no se quiere consumir el webservice:
+
+    // $ws_products_stock_prices_response = array(
+    //     'result' => 'OK',
+    //     'Disponible' => 'Si',
+    //     'Precio_con_descuentos' => '1',
+    // );
 
     // si no regresa exito el webservice, no proseguimos con la creación de archivos
     if ($ws_products_stock_prices_response['result'] != 'OK') {
@@ -191,7 +199,7 @@ for ($row = 2; $row <= $highestRow; ++$row) {
         continue;
     }
     // imprimimos cada iteracion
-    echo $ws_products_stock_prices_response['Precio_con_descuentos'] . PHP_EOL;
+    // echo $ws_products_stock_prices_response['Precio_con_descuentos'] . PHP_EOL;
 
     // obtenemos estatus del producto
     $ws_products_status = ($ws_products_stock_prices_response['Disponible'] == 'Si' ? 'true' : 'false');
@@ -238,8 +246,6 @@ for ($row = 2; $row <= $highestRow; ++$row) {
     $category_id = $ws_products_response['Categorias'][$category_index]['Id']; // TODO: PHP Notice:  Undefined offset: -1 in /home/lgarcia/lagonezs/gonher_api_fesh.php on line 164
     // escritura de productos:
     $products_image = rtrim($ws_products_response['Imagen_principal']);
-    // descarga asincrona de imagenes al leer el archivo de imagen
-    // exec('bash -c "wget ' . $products_image . ' -c -P downloaded_images/  > /dev/null 2>&1 &"');
     $products_layout_fesh[$pl_coun]['product_id'] = $pl_coun - 1;
     $products_layout_fesh[$pl_coun]['name(es-es)'] = sanitize_name($ws_products_response['Nombre']);
     $products_layout_fesh[$pl_coun]['categories'] = $category_id;
@@ -254,7 +260,10 @@ for ($row = 2; $row <= $highestRow; ++$row) {
     $products_layout_fesh[$pl_coun]['model'] = $ws_products_response['Codigo'];
     $products_layout_fesh[$pl_coun]['manufacturer'] = $ws_products_response['Marca'];
     $products_layout_fesh[$pl_coun]['image_url'] = $products_image;
-    $products_layout_fesh[$pl_coun]['image_name'] = $products_image_path_fesh . basename($products_image);
+    // al subir las imagenes a fesh, las pone en minusculas
+    // entonces de una vez actualizamos las imagenes de productos a minusculas
+    // para evitar problemas, las imagenes descargadas se deben renombrar a minusculas
+    $products_layout_fesh[$pl_coun]['image_name'] = $products_image_path_fesh . strtolower(basename($products_image));
     $products_layout_fesh[$pl_coun]['shipping'] = 'yes';
     $products_layout_fesh[$pl_coun]['price'] = $ws_products_price;
     $products_layout_fesh[$pl_coun]['points'] = '0';
@@ -285,17 +294,13 @@ for ($row = 2; $row <= $highestRow; ++$row) {
 
     // escritura de imagenes de productos:
     foreach ($ws_products_response['Imagenes_secundarias'] as $key => $additional_image) {
-        // limitar a 2 imagenes secundarias, para ahorrar espacio
-        // TODO: hacerlo configurable
-        // if($key >= 2){
-        //     continue;
-        // }
         $products_image = rtrim($additional_image);
-        // descarga asincrona de imagenes al leer el archivo de imagen
-        // exec('bash -c "wget ' . $products_image . ' -c -P downloaded_images/  > /dev/null 2>&1 &"');
         $products_images_layout_fesh[$pil_coun]['product_id'] = $products_layout_fesh[$pl_coun]['product_id'];
         $products_images_layout_fesh[$pil_coun]['image_url'] =  $products_image;
-        $products_images_layout_fesh[$pil_coun]['image'] =  $products_image_path_fesh . basename($products_image);
+        // al subir las imagenes a fesh, las pone en minusculas
+        // entonces de una vez actualizamos las imagenes de productos a minusculas
+        // para evitar problemas, las imagenes descargadas se deben renombrar a minusculas
+        $products_images_layout_fesh[$pil_coun]['image'] =  $products_image_path_fesh . strtolower(basename($products_image));
         $products_images_layout_fesh[$pil_coun]['sort_order'] = '0';
         // incrementa contador
         $pil_coun++;

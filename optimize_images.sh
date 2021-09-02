@@ -28,18 +28,15 @@ find -name '*.png' -type f | xargs -I {} -n 1 -P 4 mogrify -format jpg -backgrou
 echo "eliminar archivos convertidos a png( ya no se necesitan)"
 rm *.png
 
-#echo "reducir las imagenes de manera proporcional a 900x900 pixeles que midan más de 900 pixeles"
-#find -name '*.jpg' -type f -print0 | xargs -0 identify -format '%h %i\n'| awk '$1>900' | cut -d' ' -f2- | xargs -I {} -n 1 -P 4 mogrify -resize 900x900\> {}
-
 echo "reducir las imagenes a 900x900 pixeles y rellenar espacios con fondo blanco a 900x900 pixeles"
 # esta configuración de medidas es especial para la plataforma fesh
 find -name '*.jpg' -type f | xargs -I {} -n 1 -P 4 mogrify -resize 900x900 -extent 900x900 -gravity Center -fill white {}
 
 echo "agregar marca de agua"
-find -name '*.jpg' -type f | xargs -I {} -n 1 -P 4 composite -dissolve 7 -tile ../$WATERMARK_IMG {} {}
+find -name '*.jpg' -type f | xargs -I {} -n 1 -P 4 composite -dissolve 6 -tile ../$WATERMARK_IMG {} {}
 
-echo "comprimir todas las imagenes jpg a 75 porciento"
-find -name '*.jpg' -type f | xargs -I {} -n 1 -P 4 mogrify -quality 75% {}
+echo "comprimir todas las imagenes jpg a 60 porciento"
+find -name '*.jpg' -type f | xargs -I {} -n 1 -P 4 mogrify -quality 60% {}
 
 echo "optimizar imagenes"
 find -name '*.jpg' -type f | xargs -I {} -n 1 -P 4 jpegoptim -o --strip-all --all-progressive {}
@@ -47,5 +44,8 @@ find -name '*.jpg' -type f | xargs -I {} -n 1 -P 4 jpegoptim -o --strip-all --al
 echo "renombrar archivos residuales"
 for f in `find -name "*.jpg~"`; do mv -v "$f" $(echo "$f" | tr -d '\~'); done
 
-# descargar multiples imagenes desde un archivo con 10 hilos de descarga:
-# sort -u ../download_images.txt |  xargs -I {} -n 1 -P 10  wget -c -i- {}
+echo "cambiar mayusculas a minusculas"
+for i in $( ls | grep [A-Z] ); do mv -i $i `echo $i | tr 'A-Z' 'a-z'`; done
+
+# descargar multiples imagenes desde un archivo con 20 hilos de descarga:
+# sort -u ../download_images.txt |  xargs -I {} -n 1 -P 20  wget -c -i- {}

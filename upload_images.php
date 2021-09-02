@@ -2,7 +2,12 @@
 
 /**
  * Carga multiples imagenes a la plataforma fesh
+ * 
  */
+// Actualizar los valores de estas constantes deacuerdo a los valores que regrese el navegador desde la consola de desarrollo
+define('COOKIE_PHPSESSID', 'm479nc0jhjab5gu50ma6hd1g60');
+define('COOKIE_DEFAULT', '86394511a5959182f1efd38a35');
+define('TOKEN_GET_PARAM', 'dlEksTXNOtoaT1m06LR7Ob164DS2oUmk');
 
 /**
  * Undocumented function
@@ -43,7 +48,11 @@ function curl_sender($url, $get_params, $post_params, $headers)
 }
 
 /**
- * Undocumented function
+ * Sube imagenes a fesh
+ * para obtener las cookies y token, abrir https://coyotesmusicshop.com.mx/admin/?user56571
+ * iniciar sesion
+ * obtener el valor del token desde la url (viene como parametro GET)
+ * obtener los valores de cookie desde la consola del navegador
  *
  * @param [array] $images
  * @return string
@@ -56,13 +65,11 @@ function send_images($images)
 
     $url = 'https://coyotesmusicshop.com.mx/admin/index.php';
 
-    // TODO: poner cookies y token como constantes o como parametros
-    // NOTA: tomar las cookies de la cabecera ajax del formulario de subir imagenes de fesh
     $cookies = array(
-        "PHPSESSID" => "5vv0o3fql7us081lkteha3fp83",
-        "default" => "5f326e301506b4d99ec6a690a4",
+        "PHPSESSID" => COOKIE_PHPSESSID,
+        "default" => COOKIE_DEFAULT,
     );
-    $token = "oOXHgf7reBFXnjNzF2DjxA8dJy3jMKIF";
+    $token = TOKEN_GET_PARAM;
 
     $get_params = array(
         "route" => "common/filemanager/upload",
@@ -106,7 +113,7 @@ function read_images($dir)
                         "filename" => $filename,
                         "mime" => $image['mime']
                     );
-                    if (count($files) == 20) {
+                    if (count($files) == 30) {
                         $response = json_decode(send_images($files), true);
                         if (isset($response['success'])) {
                             $i += count($files);

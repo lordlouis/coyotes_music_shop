@@ -20,69 +20,6 @@ $ws_request = array(
 // ruta en la cual se van a guardar las imagenes de productos
 $products_layout_fesh = array();
 
-/*
-// obtenemos listado de modelos de productos de la tienda fesh
-$csv_file = file_get_contents('https://coyotesmusicshop.com.mx/force404?get_products_model=1');
-// test:
-// $csv_file = demo_csv_file();
-$csv_array = str_getcsv($csv_file, PHP_EOL);
-
-foreach ($csv_array as $key => $_model){
-
-    $ws_products_code = rtrim($_model);
-
-    $ws_request['Articulo'] = $ws_products_code;
-
-    $ws_products_stock_prices_response = $aasasoft_products->get_stock_prices_service($ws_request);
-
-    // si no regresa exito el webservice, no proseguimos con la creación de archivos
-    if ($ws_products_stock_prices_response['result'] != 'OK') {
-        echo 'get_stock_prices_service: error al consultar codigo ' . $ws_products_code . PHP_EOL;
-        continue;
-    }
-    // imprimimos cada iteracion
-    echo $ws_products_stock_prices_response['Codigo'] . ' ';
-    echo $ws_products_stock_prices_response['Precio_con_descuentos'] . PHP_EOL;
-
-    // obtenemos estatus del producto
-    $ws_products_status = ($ws_products_stock_prices_response['Disponible'] == 'Si' ? '1' : '0');
-
-    // obtener primero precio con descuento
-    $ws_products_price = (float) $ws_products_stock_prices_response['Precio_con_descuentos'];
-    if ($ws_products_price < 0) {
-        // si no existe entonces tomar Precio_distribuidor
-        $ws_products_price = (float) $ws_products_stock_prices_response['Precio_distribuidor'];
-    }
-
-    // limitar a que solo se generen productos con precio mayor o igual a $500
-    // if ($ws_products_price < 500) {
-    //     continue;
-    // }
-    // si lo asignamos al archivo de carga, pero con estatus desactivado
-    if ($ws_products_price < 500) {
-        $ws_products_status = '0';
-    }
-
-    // aumentar el precio de venta
-    $ws_products_price = update_product_price($ws_products_price);
-    // quitar valor de IVA incluido en el precio
-    $ws_products_price = $ws_products_price / 1.16;
-
-    // // test
-    // $ws_products_code = 'model ' . $key;
-    // $ws_products_price = 'price ' . $key;
-    // $ws_products_status = 'status ' . $key;
-
-    $products_layout_fesh[$key] = json_encode(array(
-        'model' => $ws_products_code,
-        'price' => $ws_products_price,
-        'status' => $ws_products_status,
-        'stock_status_id' => ($ws_products_status == '1' ? '7' : '5'), // 7= in stock 5 = out of stock
-        'tax_class_id' => '1',
-    ));
-
-}
-*/
 echo 'get_all_stock_service...'. PHP_EOL;
 $ws_response = $aasasoft_products->get_all_stock_service($ws_request);
 if (isset($ws_response['Articulos'])) {
@@ -110,11 +47,13 @@ if (isset($ws_response['Articulos'])) {
         $ws_products_price = (float) $articulos['PrecioDistribuidor'];
 
         // si lo asignamos al archivo de carga, pero con estatus desactivado
+        /*
         if ($ws_products_price < 500) {
             $ws_products_status = '0';
             $products_layout_fesh[$ws_products_code]['status'] = $ws_products_status;
             $products_layout_fesh[$ws_products_code]['stock_status_id'] = ($ws_products_status == '1' ? '7' : '5'); // 7= in stock 5 = out of stock
         }
+        */
 
         // aumentar el precio de venta
         $ws_products_price = update_product_price($ws_products_price);
@@ -142,26 +81,26 @@ if(!empty($products_layout_fesh)){
         "Content-Type: multipart/form-data",
     );
     $post_params = array();
-    $step = 100;
+    $step = 2000;
     // enviar los datos recabados de 100 en 100
     foreach($products_layout_fesh as $key=> $product){
-        $post_params[] = json_encode($product);
+        $post_params[] = $product;
         if(count($post_params) % $step == 0){
-            $response = curl_sender($url, $get_params, $post_params, $headers);
-            // echo $response . PHP_EOL;
+            $response = curl_sender($url, $get_params, json_encode($post_params), $headers);
+            echo $response . PHP_EOL;
             $post_params = array();
         }
     }
     if(count($post_params) > 0){
-        $response = curl_sender($url, $get_params, $post_params, $headers);
-        // echo $response . PHP_EOL;
+        $response = curl_sender($url, $get_params, json_encode($post_params), $headers);
+        echo $response . PHP_EOL;
     }
-    echo $response . PHP_EOL;
+    // echo $response . PHP_EOL;
     echo 'date end: '. date('Y-m-d H:i:s') . PHP_EOL;
 
 }
 
-/**
+/*
     Aumentar precio deacuerdo al valor del precio de gonher:
     porcentaje_articulo = 
         precio_gonher < 500: 100%
@@ -174,33 +113,33 @@ if(!empty($products_layout_fesh)){
     variable = precio_gonher * porcentaje_articulo
     precio_final = precio_gonher + variable
  *
- * @param [float] $produt_price
+ * @param float $product_price
  * @return float
  */
-function update_product_price($produt_price)
+function update_product_price($product_price)
 {
-    $produt_price_updated = $produt_price;
+    $product_price_updated = $product_price;
     switch (true) {
-        case $produt_price < 500:
-            $produt_price_updated = $produt_price * 2;
+        case $product_price < 500:
+            $product_price_updated = $product_price * 2;
             break;
-        case $produt_price >= 500 && $produt_price <= 2000:
-            $produt_price_updated = $produt_price * 1.4;
+        case $product_price >= 500 && $product_price <= 2000:
+            $product_price_updated = $product_price * 1.4;
             break;
-        case $produt_price > 2000 && $produt_price <= 5000:
-            $produt_price_updated = $produt_price * 1.3;
+        case $product_price > 2000 && $product_price <= 5000:
+            $product_price_updated = $product_price * 1.3;
             break;
-        case $produt_price > 5000 && $produt_price <= 10000:
-            $produt_price_updated = $produt_price * 1.25;
+        case $product_price > 5000 && $product_price <= 10000:
+            $product_price_updated = $product_price * 1.25;
             break;
-        case $produt_price > 10000 && $produt_price <= 20000:
-            $produt_price_updated = $produt_price * 1.15;
+        case $product_price > 10000 && $product_price <= 20000:
+            $product_price_updated = $product_price * 1.15;
             break;
-        case $produt_price > 20000:
-            $produt_price_updated = $produt_price * 1.10;
+        case $product_price > 20000:
+            $product_price_updated = $product_price * 1.10;
             break;
     }
-    return $produt_price_updated;
+    return $product_price_updated;
 }
 
 function curl_sender($url, $get_params, $post_params, $headers)
@@ -232,19 +171,10 @@ function curl_sender($url, $get_params, $post_params, $headers)
     return $response;
 }
 
-function demo_csv_file(){
-    return
-"ISFLIDUS460AMA
-ISFLIDUS430DAO
-ISFLIDUS445ACA
-ISFLIDUS320
-ISFLIDUS322ZEZ
-ISFLIDUS440KOA
-ISFLITUSEESUNS
-ISFLIDUS330REL
-ISFLIDUS371MAH
-ISFLIDUS410QAQ
-ISFLIDUS445KOA
-ISFLIMUS2
-ISFLINUP310";
-}
+
+/*
+cobrar envio en productos menores a 500, se cobra 100 de envio;
+propuesta: ventas por comision en la pagina web al empleado de puga
+o darle $500 por semana por x ventas semanales y administracion y redes sociales (banners, promociones)
+
+*/
